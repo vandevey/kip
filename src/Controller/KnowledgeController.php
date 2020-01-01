@@ -28,12 +28,17 @@ class KnowledgeController extends AbstractController
         $splittedNames = explode("/", $rawPath);
         $filename      = $splittedNames[count($splittedNames) - 1];
         if ($manager->isFile($path) && !$manager->pathIsMd($path)) {
-            return new BinaryFileResponse($manager->getFilePath($path), 200, ["Content-Type" => mime_content_type($manager->getFilePath($path))]);
+            $binaryResponse = new BinaryFileResponse($manager->getFilePath($path), 200, ["Content-Type" => mime_content_type($manager->getFilePath($path))]);
+            $binaryResponse->setMaxAge(864000);
+            $binaryResponse->setSharedMaxAge(864000);
+
+            return $binaryResponse;
         } elseif ($manager->isFolder($path . "/")) {
             $path .= "/" . StorageManager::INDEX_FILE_NAME;
         } elseif (!$manager->pathIsMd($path)) {
             $path = $path . ".md";
         }
+        $dirName = $manager->getParentDir($path);
 
 
         $file           = $manager->getFileContent($path);
@@ -46,6 +51,7 @@ class KnowledgeController extends AbstractController
 
             'content'        => $body,
             'tableOfContent' => $tableOfContent,
+            "directory"      => $dirName,
             'raw'            => $file,
             'filename'       => $path,
             'rawPath'        => $rawPath,

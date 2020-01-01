@@ -1,0 +1,229 @@
+{% extends 'base.html.twig' %}
+{% block body %}
+
+    <nav>
+        <div class="progress">
+            <div class="value" style="width:0%"></div>
+        </div>
+        <form class="nav-url" method="get" action="#">
+            <input class="nav-url-field" type="text" name="path" value="{{ path }}"/>
+            <button><i class="fad fa-arrow-alt-right"></i></button>
+
+        </form>
+        <a onclick="browseAndUpload()"> <i class="fad fa-upload"></i></a>
+        <form method="post" action="{{ path('media_store',{path:path}) }}"
+              enctype="multipart/form-data">
+            <input style="display: none;" id="fileUploader" type="file" name="media"/>
+        </form>
+    </nav>
+    <div class="container">
+        <table>
+            <tr>
+                <th>
+                    Name
+                </th>
+                <th>
+                    Size
+                </th>
+
+                <th>
+                    Action
+                </th>
+            </tr>
+            <tr>
+                <td colspan="3">
+                    <a href="{{ path("media_index",{path:parent, action: action}) }}"><i class="fad fa-folder"></i> ../</a>
+                </td>
+            </tr>
+            {% for directory in directories %}
+                <tr>
+                    <td>
+                        <a href="{{ path("media_index",{path:path ~"/" ~ directory.filename, action: action}) }}">
+                            <i class="fad fa-folder"></i> {{ directory.filename }}/
+                        </a>
+                    </td>
+                    <td></td>
+                    <td class="action-col">
+
+                        <a onclick="deleteMedia('{{ path("documents_delete",{path: path ~"/"~directory.filename, json: true}) }}')">
+                            <i class="fad fa-trash"></i>
+                        </a>
+
+                    </td>
+                </tr>
+            {% endfor %}
+            {% for file in files %}
+                <tr>
+                    <td><a onclick="selectFile('{{ "/" ~ path ~"/"~file.filename }}')">
+                            {% if file.extension in ["png","jpg","jpeg"] %}
+                                <i class="fad fa-image"></i>
+
+                            {% else %}
+                                <i class="fad fa-file"></i>
+                            {% endif %} {{ file.filename }}
+                        </a>
+                    </td>
+                    <td>{{ file.size }}</td>
+
+                    <td class="action-col">
+                        <a target="_blank"
+                           href="{{ path("knowledge_read",{path: (path ~"/"~file.filename)| trim("/","left"), action: action}) }}">
+                            <i class="fad fa-eye"></i>
+                        </a>
+                        <a onclick="deleteMedia('{{ path("documents_delete",{path: path ~"/"~file.filename, json: true}) }}')">
+                            <i class="fad fa-trash"></i>
+                        </a>
+
+                    </td>
+                </tr>
+            {% endfor %}
+
+        </table>
+    </div>
+{% endblock %}
+
+{% block stylesheets %}
+    <style>
+        td, th {
+            text-align: left;
+        }
+
+        tr:hover .preview {
+            display: block;
+            width: 150px;
+            position: absolute;
+        }
+
+        tr:nth-child(2n) {
+            background-color: var(--color-light);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+
+        .progress {
+            z-index: 10000;
+            width: 100%;
+            height: 6px;
+        }
+
+        td {
+            padding: 10px;
+        }
+
+        .progress > .value {
+            background-color: var(--color-primary);
+            height: 100%;
+            transition: width 1s;
+
+
+        }
+
+        .container {
+            padding-top: 36px;
+            height: calc(100vh - 36px);
+            overflow: auto;
+        }
+
+        nav {
+            position: fixed;
+            z-index: 1000;
+            background-color: white;
+            height: 36px;
+            width: 100%;
+        }
+
+        .nav-url {
+            display: inline;
+        }
+
+        .nav-url-field {
+            width: calc(100vw - 80px);
+            float: left;
+
+        }
+
+        .nav-url button {
+            cursor: pointer;
+        }
+
+        .nav-url button:hover {
+            background-color: var(--color-link);
+        }
+
+
+    </style>
+{% endblock %}
+{% block javascripts %}
+    <script>
+
+        function selectFile(filePath) {
+            filePath = filePath.replace("//", "/");
+            filePath = filePath.replace("/./", "/");
+            filePath = filePath.replace("/../", "/");
+            parent.postMessage(JSON.stringify({
+                "action": "{{ action }}",
+                "filename": filePath
+            }), "{{ path('knowledge_read_home') }}");
+        }
+
+        function browseAndUpload() {
+            fileUploader = document.getElementById("fileUploader")
+            fileUploader.onchange = function () {
+                var file = this.files[0];
+                var request = new XMLHttpRequest();
+                var data = new FormData();
+                data.append('media', fileUploader.files[0]);
+                data.append("path", "{{ path }}");
+                request.upload.addEventListener('progress', function (e) {
+                    var percent_complete = (e.loaded / e.total) * 100;
+                    document.querySelector(".progress .value").style.width = percent_complete + "%";
+
+                });
+                request.addEventListener('load', function (e) {
+
+                    if (request.status > 299) {
+                        alert("something wrong happened");
+                        return;
+                    }
+                    // request.response will hold the response from the server
+                    fileUploader.value = null
+                    var url = JSON.parse(request.response).filename;
+                    // IN CASE OF IFRAME TRIGGER PARENT
+                    // https://davidwalsh.name/window-iframe
+                    //todo
+                    selectFile(url);
+
+                    // https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage
+                    setTimeout(() => window.location.reload(), 1000)
+                });
+                request.open('post', '{{ path("media_store") }}');
+                request.send(data);
+
+            };
+            fileUploader.click()
+        }
+
+        function deleteMedia(path) {
+            if (window.confirm("are you sure you want to delete it?")) {
+                makeHttpRequest(path, () => window.location.reload());
+
+            }
+
+        }
+
+        function makeHttpRequest(path, callback) {
+            let xhr = new XMLHttpRequest();
+            xhr.open("GET", path);
+            xhr.send();
+            xhr.onload = function () {
+                if (xhr.status < 300 && xhr.status > 199) {
+                    callback();
+                }
+            };
+        }
+    </script>
+{% endblock %}

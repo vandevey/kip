@@ -6,7 +6,7 @@ namespace App\Services;
 
 use App\Entity\Page;
 use Symfony\Component\Filesystem\Exception\FileNotFoundException;
-use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\Finder;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class StorageManager
@@ -24,7 +24,7 @@ class StorageManager
         $this->makeDir();
     }
 
-    public function listAllFiles($path = "", Page &$parent)
+    public function listAllFiles($path = "", Page &$parent = null)
     {
         $fullPath         = $this->storagePath . $path;
         $files            = scandir($fullPath);
@@ -48,8 +48,8 @@ class StorageManager
                     }
                 } else {
                     if (strpos($item->name, ".") !== 0) {
-                        $item->mime         = mime_content_type($fullFolderPath);
-                        $parent->subLinks[] = $item;
+                        $item->mime = mime_content_type($fullFolderPath);
+                        // $parent->subLinks[] = $item;
                     }
 
                 }
@@ -62,7 +62,7 @@ class StorageManager
         usort($parent->subLinks, function (Page $page, Page $page2) {
             if ($page->isFolder && !$page2->isFolder) {
                 return true;
-            } elseif ($page2->isFolder && !$page->isFolder) {
+            } else if ($page2->isFolder && !$page->isFolder) {
                 return false;
 
             } else {
@@ -134,7 +134,7 @@ class StorageManager
 
         if ($this->isFolder($fileName)) {
             self::delTree($this->storagePath . $fileName);
-        } elseif ($this->fileExists($fileName)) {
+        } else if ($this->fileExists($fileName)) {
             unlink($this->storagePath . $fileName);
         } else {
             if ($uncount >= 0) {
@@ -164,11 +164,50 @@ class StorageManager
 
     public function addUploadedFile(UploadedFile $uploadedFile, $path)
     {
+        $basePath=$path;
         $fullPath = $this->storagePath . "/" . $path;
         if (!$this->isFolder($path)) {
             $path = dirname($fullPath);
+        } else {
+            $path = $fullPath;
         }
-        $uploadedFile->move($path,$uploadedFile->getClientOriginalName());
-        return "./".$uploadedFile->getClientOriginalName();
+
+
+        $fileNameExploded = explode(".", $uploadedFile->getClientOriginalName());
+        array_pop($fileNameExploded);
+
+        $newName = implode(".", $fileNameExploded) . "-" . time() . "." . $uploadedFile->getClientOriginalExtension();
+        $file    = $uploadedFile->move($path, $newName);
+        return "$basePath/$newName";
+    }
+
+    public function getParentDir($directory)
+    {
+        return rtrim(dirname($directory), "/");
+    }
+
+    public function getRelativeFromAbsolutePath($absolutePath)
+    {
+        return "/" . str_replace(realpath($this->storagePath), "", realpath($absolutePath));
+    }
+
+    public function getFiles($path)
+    {
+        $finder = new Finder();
+        $finder->files()->in(realpath($this->storagePath . "/" . $path));
+        if ($finder->hasResults()) {
+            return $finder->depth(0);
+        }
+        return false;
+    }
+
+    public function getDirectories($path)
+    {
+        $finder = new Finder();
+        $finder->directories()->in(realpath($this->storagePath . "/" . $path));
+        if ($finder->hasResults()) {
+            return $finder->depth(0);
+        }
+        return false;
     }
 }
