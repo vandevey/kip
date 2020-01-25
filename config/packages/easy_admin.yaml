@@ -1,0 +1,17 @@
+easy_admin:
+  site_name: 'KIP Admin Interface'
+
+
+  entities:
+    User:
+      label: User
+      icon: face
+      class: App\Entity\User
+
+
+  design:
+    brand_color: '#9933FF'
+
+    menu:
+      - { entity: 'User', icon: 'user' }
+      - { entity: 'User', icon: 'cog' }

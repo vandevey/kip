@@ -129,5 +129,10 @@ class User implements UserInterface
         $this->userDn = $userDn;
     }
 
+    public function __toString()
+    {
+     return $this->getUsername();
+    }
+
 
 }

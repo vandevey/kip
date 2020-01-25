@@ -27,6 +27,8 @@ parameters:
   ldap_base_dn: "%env(LDAP_BASE_DN)%"
   ldap_user_key: "%env(LDAP_USER_KEY)%"
   ldap_auth_dn: "%env(LDAP_AUTH_DN)%"
+  "env(INSTALLATION_DONE)": false
+  installation_done: "%env(INSTALLATION_DONE)%"
 
 services:
   # default configuration for services in *this* file
